@@ -1,0 +1,196 @@
+Basic Stream Problems
+1. Sum all numbers in a list
+int sum = numbers.stream()
+                 .mapToInt(Integer::intValue)
+                 .sum();
+
+2. Find maximum number
+int max = numbers.stream()
+                 .max(Integer::compare)
+                 .orElseThrow();
+
+
+3. Count even numbers
+long count = numbers.stream()
+                 .filter(n -> n % 2 == 0)
+                 .count();
+
+
+4. Convert list of strings to uppercase
+List<String> result = names.stream()
+                 .map(String::toUpperCase)
+                 .toList();
+
+
+5. Remove duplicates
+List<Integer> unique = numbers.stream()
+                 .distinct()
+                 .toList();
+
+
+2️⃣ Filtering Problems
+6. Find numbers greater than 10
+List<Integer> result = numbers.stream()
+                 .filter(n -> n > 10)
+                 .toList();
+
+
+7. Find first string starting with "A"
+Optional<String> result = names.stream()
+                 .filter(n -> n.startsWith("A"))
+                 .findFirst();
+
+
+8. Check if any number is negative
+boolean exists = numbers.stream()
+                 .anyMatch(n -> n < 0);
+
+
+9. Check if all numbers are positive
+boolean allPositive = numbers.stream()
+                 .allMatch(n -> n > 0);
+
+
+10. Find strings longer than 5 characters
+List<String> result = names.stream()
+                 .filter(n -> n.length() > 5)
+                 .toList();
+
+
+3️⃣ Transformation Problems
+11. Convert list of objects to list of names
+List<String> names = users.stream()
+                 .map(User::getName)
+                 .toList();
+
+
+12. Square all numbers
+List<Integer> result = numbers.stream()
+                 .map(n -> n * n)
+                 .toList();
+
+
+13. Convert strings to their lengths
+List<Integer> lengths = names.stream()
+                 .map(String::length)
+                 .toList();
+
+
+14. Convert list to comma-separated string
+String result = names.stream()
+                 .collect(Collectors.joining(", "));
+
+
+15. Create map from list
+Map<Integer,String> map = users.stream()
+                 .collect(Collectors.toMap(
+                    User::getId,
+                    User::getName
+                 ));
+
+
+4️⃣ Aggregation Problems
+16. Calculate average value
+double avg = numbers.stream()
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0);
+
+
+17. Count words in list
+long count = words.stream().count();
+
+
+18. Find longest string
+String longest = names.stream()
+                .max(Comparator.comparingInt(String::length))
+                .orElse("");
+
+
+19. Sum property of objects
+int total = orders.stream()
+          .mapToInt(Order::getAmount)
+          .sum();
+
+
+20. Find second highest number
+int second = numbers.stream()
+        .sorted(Comparator.reverseOrder())
+        .skip(1)
+        .findFirst()
+        .orElseThrow();
+
+
+5️⃣ Grouping Problems
+These use Collectors.groupingBy().
+
+21. Group employees by department
+Map<String,List<Employee>> result = employees.stream()
+                                        .collect(Collectors.groupingBy(
+                                        Employee::getDepartment
+                                    ));
+
+
+22. Count employees per department
+Map<String,Long> result = employees.stream()
+                            .collect(Collectors.groupingBy(
+                                Employee::getDepartment,
+                                Collectors.counting()
+                            ));
+
+
+23. Group strings by length
+Map<Integer,List<String>> result = names.stream()
+                                    .collect(Collectors.groupingBy(
+                                        String::length
+                                    ));
+
+
+24. Partition numbers into even/odd
+Map<Boolean,List<Integer>> result = numbers.stream()
+                                    .collect(Collectors.partitioningBy(
+                                          n -> n % 2 == 0
+                                    ));
+
+
+25. Group orders by status
+Map<OrderStatus,List<Order>> result = orders.stream()
+                                    .collect(Collectors.groupingBy(
+                                        Order::getStatus
+                                    ));
+
+
+6️⃣ Advanced Stream Problems
+
+26. Flatten list of lists
+List<Integer> result = lists.stream()
+                        .flatMap(List::stream)
+                        .toList();
+
+
+27. Find duplicate elements
+Set<Integer> duplicates = numbers.stream()
+                            .filter(n ->
+                                Collections.frequency(numbers, n) > 1)
+                            .collect(Collectors.toSet());
+
+
+28. Get top 3 highest numbers
+List<Integer> top3 = numbers.stream()
+                        .sorted(Comparator.reverseOrder())
+                        .limit(3)
+                        .toList();
+
+
+29. Convert list to frequency map
+Map<String,Long> freq = words.stream()
+                        .collect(Collectors.groupingBy(
+                             w -> w,
+                             Collectors.counting()
+                        ));
+
+
+30. Get unique characters from string
+Set<Character> chars = input.chars()
+                        .mapToObj(c -> (char)c)
+                        .collect(Collectors.toSet());
