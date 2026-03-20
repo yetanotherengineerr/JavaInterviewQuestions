@@ -108,6 +108,7 @@ short-circuiting.
     Stream<Integer> s = list.stream();
     s.count();
     s.findFirst();
+
 53. Why does this code not execute anything?
     list.stream().filter(x -> expensiveCall(x));
 54. What happens if peek() is used without a terminal operation?
@@ -117,29 +118,34 @@ short-circuiting.
         .filter(n -> n < 0)
         .findFirst();
 Answer: Infinite stream + condition never satisfied.
+
 57. Why is this code unsafe?
     List<Integer> result = new ArrayList<>();
     numbers.parallelStream()
       .forEach(result::add);
 Hint: Race condition.
+
 58. Why does findFirst() hurt parallel performance?
 Hint: Because ordering must be preserved. Better to use: findAny()
+
 59. How would you create a frequency map using streams?
 Expected: words.stream().collect(Collectors.groupingBy(
                             w -> w,
                             Collectors.counting()
                         ));
+
 60. Difference between Collectors.toList() & Stream.toList()
 Answer: toList() returns unmodifiable list.
+
 61. How would you implement a custom collector?
 Example question: Create a collector that collects elements into a LinkedList.
 Expected knowledge: supplier, accumulator, combiner, finisher
+
 62. Why must collectors be associative for parallel streams?
 Hint: So partial results can merge correctly.
+
 63. What is the difference between groupingBy & partitioningBy
 Hint: partitioningBy → boolean split.
-64. 
-
 
 
 ### Streams Coding challenges
@@ -147,4 +153,4 @@ Hint: partitioningBy → boolean split.
 2. Count frequency of elements
 3. Group objects by field
 4. Flatten nested lists
-5. Find duplicates in list
+5. Find duplicates in the list
