@@ -17,3 +17,52 @@ Grouped by type of operation:
 | Stream.builder()                          | Creates stream builder                        |
 | BufferedReader.lines()                    | Stream of lines from file                     |
 | Files.lines(Path)                         | Stream lines from file                        |
+
+### 2. Intermediate Operations (Lazy) - these transform the stream and return another stream.
+#### Filtering
+| Method                                    | Description                          |
+|-------------------------------------------|--------------------------------------|
+| filter(Predicate)                         | Keeps matching elements.             |
+| Collection.parallelStream()               | Creates a parallel stream            |
+
+#### Mapping
+| Method                        | Description           |
+|-------------------------------|-----------------------|
+| map(Function)                 | Transform element     |
+| mapToInt(ToIntFunction)       | Convert to IntStream  |
+| mapToLong(ToLongFunction)     | Convert to LongStream |
+| mapToDouble(ToDoubleFunction) | Convert to DoubleStr  |
+
+#### FlatMapping
+| Method                            | Description             |
+|-----------------------------------|-------------------------|
+| flatMap(Function)                 | Flatten nested streams  |
+| flatMapToInt(ToIntFunction)       | Flatten to IntStream    |
+| flatMapToLong(ToLongFunction)     | Flatten to LongStream   |
+| flatMapToDouble(ToDoubleFunction) | Flatten to DoubleStream |
+
+#### Distinct
+| Method                            | Description             |
+|-----------------------------------|-------------------------|
+| distinct()                        | Removes Duplicates      |
+
+#### Sorting
+| Method             | Description     |
+|--------------------|-----------------|
+| sorted()           | Natural sorting |
+| sorted(Comparator) | Custom sorting  |
+
+#### Peek (Debugging)
+| Method             | Description                               |
+|--------------------|-------------------------------------------|
+| peek(Consumer)     | Perform action without modifying stream   |
+
+#### Limiting
+| Method      | Description                  |
+|-------------|------------------------------|
+| limit(long) | Restricts number of elements |
+| skip(long)  | Skips first elements         |
+
+
+
+
