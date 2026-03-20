@@ -1,0 +1,285 @@
+Java Collectors Cheat Sheet (40+ Methods)
+The class: java.util.stream.Collectors
+Collectors are used with Stream.collect() to transform a stream into collections, maps, summaries, or custom results.
+stream.collect(Collectors.method());
+
+
+1. Basic Collection Collectors
+- toList(): Collects elements into a List.
+List<String> list = stream.collect(Collectors.toList());
+
+- toSet(): Collects into a Set (removes duplicates).
+Set<String> set = stream.collect(Collectors.toSet());
+
+- toCollection(): Custom collection implementation.
+LinkedList<String> list = stream.collect(Collectors.toCollection(LinkedList::new));
+
+2. String Joining Collectors
+- joining(): Concatenates elements.
+String result = stream.collect(Collectors.joining());
+
+- joining(delimiter)
+String result = stream.collect(Collectors.joining(", "));
+Example result: apple, banana, mango
+
+- joining(delimiter, prefix, suffix)
+String result = stream.collect(Collectors.joining(", ", "[", "]"));
+Result: [apple, banana, mango]
+
+3. Counting & Simple Reductions
+- counting(): Counts elements.
+long count = stream.collect(Collectors.counting());
+
+- reducing(): General reduction.
+Optional<Integer> sum = stream.collect(Collectors.reducing(Integer::sum));
+With identity:
+int sum = stream.collect(Collectors.reducing(0, Integer::sum));
+
+4. Min / Max
+- minBy()
+Optional<Person> youngest =
+   stream.collect(Collectors.minBy(
+        Comparator.comparing(Person::getAge)));
+
+- maxBy()
+Optional<Person> oldest =
+    stream.collect(Collectors.maxBy(
+        Comparator.comparing(Person::getAge)));
+
+5. Summing Collectors
+- summingInt()
+int total =
+    stream.collect(Collectors.summingInt(Person::getAge));
+
+- summingLong()
+long total =
+    stream.collect(Collectors.summingLong(Order::getPrice));
+
+- summingDouble()
+double total =
+    stream.collect(Collectors.summingDouble(Product::getPrice));
+
+6. Averaging Collectors
+averagingInt()
+double avg =
+    stream.collect(Collectors.averagingInt(Person::getAge));
+
+- averagingLong()
+double avg =
+    stream.collect(Collectors.averagingLong(Order::getAmount));
+
+- averagingDouble()
+double avg =
+    stream.collect(Collectors.averagingDouble(Product::getPrice));
+
+7. Summary Statistics
+- summarizingInt()
+IntSummaryStatistics stats =
+    stream.collect(Collectors.summarizingInt(Person::getAge));
+Gives:
+count
+sum
+min
+max
+average
+
+
+- summarizingLong()
+LongSummaryStatistics stats =
+    stream.collect(Collectors.summarizingLong(Order::getAmount));
+
+- summarizingDouble()
+DoubleSummaryStatistics stats =
+    stream.collect(Collectors.summarizingDouble(Product::getPrice));
+
+8. Mapping Collectors
+- mapping(): Transforms elements inside grouping.
+Map<String, List<Integer>> map =
+    people.stream().collect(
+        Collectors.groupingBy(
+            Person::getCity,
+            Collectors.mapping(Person::getAge, Collectors.toList())
+        ));
+
+- flatMapping(): Java 9+: Flattens nested streams.
+Collectors.flatMapping(
+    order -> order.getItems().stream(),
+    Collectors.toList()
+)
+
+9. Filtering Collector: Java 9+: Used inside grouping.
+Collectors.filtering(
+    p -> p.getAge() > 18,
+    Collectors.toList()
+)
+
+10. CollectingAndThen: Apply a finishing transformation.
+List<String> immutable =
+    stream.collect(
+        Collectors.collectingAndThen(
+            Collectors.toList(),
+            Collections::unmodifiableList
+        ));
+
+11. Map Collectors
+- toMap(keyMapper, valueMapper)
+Map<Integer, String> map =
+    stream.collect(Collectors.toMap(
+        Person::getId,
+        Person::getName
+    ));
+
+toMap with merge function
+Collectors.toMap(
+    Person::getCity,
+    Person::getName,
+    (a,b) -> a
+)
+Handles duplicate keys.
+
+toMap with map supplier
+Collectors.toMap(
+    Person::getId,
+    Person::getName,
+    (a,b) -> a,
+    HashMap::new
+)
+
+12. Grouping Collectors
+- groupingBy()
+Map<String, List<Person>> map =
+    people.stream()
+          .collect(Collectors.groupingBy(Person::getCity));
+
+groupingBy with downstream collector
+Map<String, Long> count =
+    people.stream()
+          .collect(Collectors.groupingBy(
+              Person::getCity,
+              Collectors.counting()
+          ));
+
+groupingBy with map type
+Collectors.groupingBy(
+    Person::getCity,
+    TreeMap::new,
+    Collectors.toList()
+)
+
+13. Partitioning Collectors
+- partitioningBy(): Splits into true / false groups.
+Map<Boolean, List<Person>> map =
+    people.stream()
+          .collect(Collectors.partitioningBy(
+              p -> p.getAge() > 18
+          ));
+
+partitioningBy with downstream collector
+Map<Boolean, Long> map =
+    people.stream()
+          .collect(Collectors.partitioningBy(
+              p -> p.getAge() > 18,
+              Collectors.counting()
+          ));
+
+14. Tee Collector (Java 12+)
+- teeing(): Combine two collectors.
+double avg =
+    stream.collect(Collectors.teeing(
+        Collectors.summingDouble(i -> i),
+        Collectors.counting(),
+        (sum, count) -> sum / count
+    ));
+Useful for custom aggregation.
+
+15. Concurrent Collectors
+- groupingByConcurrent(): Parallel-friendly grouping.
+ConcurrentMap<String, List<Person>> map =
+    people.parallelStream()
+          .collect(Collectors.groupingByConcurrent(Person::getCity));
+
+- toConcurrentMap(): ConcurrentMap<Integer, String> map =
+    stream.collect(Collectors.toConcurrentMap(
+        Person::getId,
+        Person::getName
+    ));
+
+
+16. Unmodifiable Collectors (Java 10+)
+- toUnmodifiableList()
+List<String> list =
+    stream.collect(Collectors.toUnmodifiableList());
+
+- toUnmodifiableSet()
+Set<String> set =
+    stream.collect(Collectors.toUnmodifiableSet());
+
+- toUnmodifiableMap()
+Map<Integer, String> map =
+    stream.collect(Collectors.toUnmodifiableMap(
+        Person::getId,
+        Person::getName
+    ));
+
+17. Custom Collector: You can build your own collector:
+Collector.of(
+    supplier,
+    accumulator,
+    combiner,
+    finisher
+);
+
+Example:
+Collector.of(
+    ArrayList::new,
+    List::add,
+    (l1, l2) -> { l1.addAll(l2); return l1; }
+);
+
+Quick Visual Map
+Collectors
+│
+├── Collections
+│   ├─ toList
+│   ├─ toSet
+│   └─ toCollection
+│
+├── Strings
+│   └─ joining
+│
+├── Statistics
+│   ├─ counting
+│   ├─ summingInt/Long/Double
+│   ├─ averagingInt/Long/Double
+│   └─ summarizingInt/Long/Double
+│
+├── Reduction
+│   ├─ reducing
+│   ├─ minBy
+│   └─ maxBy
+│
+├── Mapping
+│   ├─ mapping
+│   ├─ flatMapping
+│   └─ filtering
+│
+├── Grouping
+│   ├─ groupingBy
+│   └─ groupingByConcurrent
+│
+├── Partitioning
+│   └─ partitioningBy
+│
+├── Maps
+│   ├─ toMap
+│   └─ toConcurrentMap
+│
+├── Advanced
+│   ├─ collectingAndThen
+│   └─ teeing
+│
+└── Immutable
+    ├─ toUnmodifiableList
+    ├─ toUnmodifiableSet
+    └─ toUnmodifiableMap
+
