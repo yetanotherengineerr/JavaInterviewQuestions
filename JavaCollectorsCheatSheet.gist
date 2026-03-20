@@ -34,6 +34,14 @@ long count = stream.collect(Collectors.counting());
 Optional<Integer> sum = stream.collect(Collectors.reducing(Integer::sum));
 With identity:
 int sum = stream.collect(Collectors.reducing(0, Integer::sum));
+With identity, mapper:
+reducing(identity, mapper, BinaryOperator)
+int totalAge = stream.collect(Collectors.reducing(
+            0,
+            Person::getAge,
+            Integer::sum
+        )
+    );
 
 4. Min / Max
 - minBy()
@@ -166,6 +174,15 @@ Collectors.groupingBy(
     Collectors.toList()
 )
 
+Multi-Level Grouping
+Common senior-level usage.
+Map<String, Map<String, List<Person>>> map = people.stream()
+          .collect(Collectors.groupingBy(
+              Person::getCountry,
+              Collectors.groupingBy(Person::getCity)
+          ));
+
+
 13. Partitioning Collectors
 - partitioningBy(): Splits into true / false groups.
 Map<Boolean, List<Person>> map =
@@ -182,7 +199,7 @@ Map<Boolean, Long> map =
               Collectors.counting()
           ));
 
-14. Tee Collector (Java 12+)
+14. Tee Collector (Java 12+): Useful for custom aggregation.
 - teeing(): Combine two collectors.
 double avg =
     stream.collect(Collectors.teeing(
@@ -190,7 +207,6 @@ double avg =
         Collectors.counting(),
         (sum, count) -> sum / count
     ));
-Useful for custom aggregation.
 
 15. Concurrent Collectors
 - groupingByConcurrent(): Parallel-friendly grouping.
@@ -203,7 +219,6 @@ ConcurrentMap<String, List<Person>> map =
         Person::getId,
         Person::getName
     ));
-
 
 16. Unmodifiable Collectors (Java 10+)
 - toUnmodifiableList()
@@ -235,6 +250,33 @@ Collector.of(
     List::add,
     (l1, l2) -> { l1.addAll(l2); return l1; }
 );
+
+Advanced Collector Patterns (Senior Java)
+Top N elements per group:
+Map<String, List<Person>> top3 =
+    people.stream().collect(
+        Collectors.groupingBy(
+            Person::getCity,
+            Collectors.collectingAndThen(
+                Collectors.toList(),
+                list -> list.stream()
+                            .sorted(byScore)
+                            .limit(3)
+                            .toList()
+            )
+        )
+    );
+
+
+Nested grouping + aggregation
+Map<String, Double> avgAgeByCity =
+    people.stream().collect(
+        Collectors.groupingBy(
+            Person::getCity,
+            Collectors.averagingInt(Person::getAge)
+        )
+    );
+
 
 Quick Visual Map
 Collectors

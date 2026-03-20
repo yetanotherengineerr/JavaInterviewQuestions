@@ -1,0 +1,325 @@
+40 Advanced Java Collectors Patterns using
+java.util.stream.Collectors
+These patterns appear frequently in large-scale backend systems, data pipelines, financial processing, analytics, and microservices.
+Examples assume Java Streams:
+stream.collect(...)
+
+1. Group Objects by Property
+Map<String, List<User>> usersByCountry =
+    users.stream()
+         .collect(Collectors.groupingBy(User::getCountry));
+
+2. Count Items per Group
+Map<String, Long> ordersPerCustomer =
+    orders.stream()
+          .collect(Collectors.groupingBy(
+              Order::getCustomerId,
+              Collectors.counting()
+          ));
+
+3. Sum Values per Group
+Map<String, Integer> salesPerRegion =
+    sales.stream()
+         .collect(Collectors.groupingBy(
+             Sale::getRegion,
+             Collectors.summingInt(Sale::getAmount)
+         ));
+
+4. Average Value per Group
+Map<String, Double> avgSalaryByDept =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDepartment,
+                 Collectors.averagingDouble(Employee::getSalary)
+             ));
+
+5. Multi-Level Grouping
+Map<String, Map<String, List<Employee>>> map =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getCountry,
+                 Collectors.groupingBy(Employee::getDepartment)
+             ));
+
+6. Group and Map Specific Field
+Map<String, List<String>> namesByCity =
+    people.stream()
+          .collect(Collectors.groupingBy(
+              Person::getCity,
+              Collectors.mapping(Person::getName, Collectors.toList())
+          ));
+
+7. Group and Collect to Set
+Map<String, Set<String>> skillsByDept =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDepartment,
+                 Collectors.mapping(Employee::getSkill, Collectors.toSet())
+             ));
+
+8. Partition Data (Boolean Split)
+Map<Boolean, List<User>> activeUsers =
+    users.stream()
+         .collect(Collectors.partitioningBy(User::isActive));
+
+9. Partition and Count
+Map<Boolean, Long> activeCount =
+    users.stream()
+         .collect(Collectors.partitioningBy(
+             User::isActive,
+             Collectors.counting()
+         ));
+
+10. Partition and Sum
+Map<Boolean, Integer> totalRevenue =
+    orders.stream()
+          .collect(Collectors.partitioningBy(
+              Order::isPremium,
+              Collectors.summingInt(Order::getAmount)
+          ));
+
+11. Convert Stream to Map
+Map<Integer, User> userMap =
+    users.stream()
+         .collect(Collectors.toMap(User::getId, u -> u));
+
+12. Handle Duplicate Keys in Map
+Map<String, User> map =
+    users.stream()
+         .collect(Collectors.toMap(
+             User::getEmail,
+             u -> u,
+             (u1, u2) -> u1
+         ));
+
+13. Use Custom Map Implementation
+Map<Integer, User> map =
+    users.stream()
+         .collect(Collectors.toMap(
+             User::getId,
+             u -> u,
+             (a,b)->a,
+             TreeMap::new
+         ));
+
+14. Top N Elements per Group
+Map<String, List<Product>> top3 =
+    products.stream()
+            .collect(Collectors.groupingBy(
+                Product::getCategory,
+                Collectors.collectingAndThen(
+                    Collectors.toList(),
+                    list -> list.stream()
+                                .sorted(byPriceDesc)
+                                .limit(3)
+                                .toList()
+                )
+            ));
+
+15. Flatten Nested Lists
+List<Item> items =
+    orders.stream()
+          .collect(Collectors.flatMapping(
+              order -> order.getItems().stream(),
+              Collectors.toList()
+          ));
+
+16. Filter Inside Grouping
+Map<String, List<Employee>> seniorEmployees =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.filtering(
+                     e -> e.getExperience() > 10,
+                     Collectors.toList()
+                 )
+             ));
+
+17. Get Minimum per Group
+Map<String, Optional<Employee>> youngest =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.minBy(
+                     Comparator.comparing(Employee::getAge)
+                 )
+             ));
+
+18. Get Maximum per Group
+Map<String, Optional<Employee>> highestSalary =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.maxBy(
+                     Comparator.comparing(Employee::getSalary)
+                 )
+             ));
+
+19. Create Immutable Collections
+List<String> list =
+    stream.collect(Collectors.toUnmodifiableList());
+
+20. Convert to Immutable Map
+Map<Integer, User> map =
+    users.stream()
+         .collect(Collectors.toUnmodifiableMap(
+             User::getId,
+             u -> u
+         ));
+
+21. Create Custom Collector
+Collector<String, StringBuilder, String> collector =
+    Collector.of(
+        StringBuilder::new,
+        StringBuilder::append,
+        StringBuilder::append,
+        StringBuilder::toString
+    );
+
+22. Calculate Statistics
+IntSummaryStatistics stats =
+    employees.stream()
+             .collect(Collectors.summarizingInt(Employee::getAge));
+
+23. Compute Total Sum
+int totalRevenue =
+    orders.stream()
+          .collect(Collectors.summingInt(Order::getAmount));
+
+24. Calculate Average
+double avgPrice =
+    products.stream()
+            .collect(Collectors.averagingDouble(Product::getPrice));
+
+25. Count Distinct Elements
+long count =
+    users.stream()
+         .map(User::getCountry)
+         .distinct()
+         .count();
+
+26. Combine Two Aggregations (teeing)
+double avg =
+    numbers.stream()
+           .collect(Collectors.teeing(
+               Collectors.summingDouble(i -> i),
+               Collectors.counting(),
+               (sum, count) -> sum / count
+           ));
+
+27. Find Range (min + max)
+Range range =
+    numbers.stream()
+           .collect(Collectors.teeing(
+               Collectors.minBy(Integer::compare),
+               Collectors.maxBy(Integer::compare),
+               Range::new
+           ));
+
+28. Join Strings from Objects
+String names =
+    users.stream()
+         .map(User::getName)
+         .collect(Collectors.joining(", "));
+
+29. Build Custom DTO from Group
+Map<String, DepartmentStats> stats =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.collectingAndThen(
+                     Collectors.toList(),
+                     DepartmentStats::fromEmployees
+                 )
+             ));
+
+30. Build Map of Lists
+Map<String, List<Order>> ordersByCustomer =
+    orders.stream()
+          .collect(Collectors.groupingBy(Order::getCustomerId));
+
+31. Count Unique Values per Group
+Map<String, Long> uniqueProducts =
+    orders.stream()
+          .collect(Collectors.groupingBy(
+              Order::getCustomerId,
+              Collectors.mapping(
+                  Order::getProductId,
+                  Collectors.collectingAndThen(
+                      Collectors.toSet(),
+                      set -> (long) set.size()
+                  )
+              )
+          ));
+
+32. Concurrent Grouping (Parallel Streams)
+ConcurrentMap<String, List<User>> map =
+    users.parallelStream()
+         .collect(Collectors.groupingByConcurrent(User::getCountry));
+
+33. Concurrent Map Collector
+ConcurrentMap<Integer, User> map =
+    users.parallelStream()
+         .collect(Collectors.toConcurrentMap(
+             User::getId,
+             u -> u
+         ));
+
+34. Map Values Transformation
+Map<Integer, String> names =
+    users.stream()
+         .collect(Collectors.toMap(
+             User::getId,
+             User::getName
+         ));
+
+35. Group and Sort Elements
+Map<String, List<Employee>> sorted =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.collectingAndThen(
+                     Collectors.toList(),
+                     list -> list.stream()
+                                 .sorted(bySalary)
+                                 .toList()
+                 )
+             ));
+
+36. Group and Get Distinct Values
+Map<String, Set<String>> skills =
+    employees.stream()
+             .collect(Collectors.groupingBy(
+                 Employee::getDept,
+                 Collectors.mapping(
+                     Employee::getSkill,
+                     Collectors.toSet()
+                 )
+             ));
+
+37. Create Frequency Map
+Map<String, Long> freq =
+    words.stream()
+         .collect(Collectors.groupingBy(
+             w -> w,
+             Collectors.counting()
+         ));
+
+38. Build Nested Aggregations
+Map<String, Double> totalRevenue =
+    orders.stream()
+          .collect(Collectors.groupingBy(
+              Order::getRegion,
+              Collectors.summingDouble(Order::getPrice)
+          ));
+
+39. Convert List → Map of Lists
+Map<String, List<Product>> map =
+    products.stream()
+            .collect(Collectors.groupingBy(Product::getCategory));
+
+40. Collect Unique Elements
+Set<String> uniqueCities =
+    users.stream()
+         .map(User::getCity)
+         .collect(Collectors.toSet());
