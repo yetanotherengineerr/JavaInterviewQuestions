@@ -43,7 +43,7 @@
 Example: List<Integer> list = new ArrayList<>();
 stream.parallel().forEach(list::add);
 35. What problems can occur with shared mutable state?
-36. Why is reduce() preferred over mutation in parallel streams?
+36. Why is reduce() preferred over mutation in parallel streams? Hint: Because it supports associative parallel aggregation.
 37. What operations prevent parallel optimization?
 Example:
 limit()
@@ -77,15 +77,15 @@ Hint: immutability.
 49. What is operation fusion in streams?
 50. What does this code print?
 Stream.of(1,2,3,4)
-.filter(x -> {
-System.out.println("filter: " + x);
-return x % 2 == 0;
-})
-.map(x -> {
-System.out.println("map: " + x);
-return x * 2;
-})
-.findFirst();
+      .filter(x -> {
+         System.out.println("filter: " + x);
+         return x % 2 == 0;
+      })
+      .map(x -> {
+         System.out.println("map: " + x);
+         return x * 2;
+      })
+      .findFirst();
 
 Answer concept:
 Lazy evaluation → stops early.
@@ -94,3 +94,57 @@ filter:1
 filter:2
 map:2
 Stream stops after first match.
+51. What happens internally when this executes?
+    list.stream()
+    .filter(x -> x > 10)
+    .map(x -> x * 2)
+    .findFirst();
+
+Expected explanation:
+pipeline fusion
+element-by-element processing
+short-circuiting.
+52. Why does this fail?
+    Stream<Integer> s = list.stream();
+    s.count();
+    s.findFirst();
+53. Why does this code not execute anything?
+    list.stream().filter(x -> expensiveCall(x));
+54. What happens if peek() is used without a terminal operation?
+55. Why does limit() improve performance in some pipelines?
+56. Why does this code hang?
+    Stream.iterate(0, n -> n + 1)
+        .filter(n -> n < 0)
+        .findFirst();
+Answer: Infinite stream + condition never satisfied.
+57. Why is this code unsafe?
+    List<Integer> result = new ArrayList<>();
+    numbers.parallelStream()
+      .forEach(result::add);
+Hint: Race condition.
+58. Why does findFirst() hurt parallel performance?
+Hint: Because ordering must be preserved. Better to use: findAny()
+59. How would you create a frequency map using streams?
+Expected: words.stream().collect(Collectors.groupingBy(
+                            w -> w,
+                            Collectors.counting()
+                        ));
+60. Difference between Collectors.toList() & Stream.toList()
+Answer: toList() returns unmodifiable list.
+61. How would you implement a custom collector?
+Example question: Create a collector that collects elements into a LinkedList.
+Expected knowledge: supplier, accumulator, combiner, finisher
+62. Why must collectors be associative for parallel streams?
+Hint: So partial results can merge correctly.
+63. What is the difference between groupingBy & partitioningBy
+Hint: partitioningBy → boolean split.
+64. 
+
+
+
+### Streams Coding challenges
+1. Find second highest number 
+2. Count frequency of elements
+3. Group objects by field
+4. Flatten nested lists
+5. Find duplicates in list

@@ -194,3 +194,58 @@ Map<String,Long> freq = words.stream()
 Set<Character> chars = input.chars()
                         .mapToObj(c -> (char)c)
                         .collect(Collectors.toSet());
+
+31. Find the top 5 most frequent words in a list.
+List<String> result = words.stream()
+                .collect(Collectors.groupingBy(
+                    w -> w, Collectors.counting())
+                    )
+                .entrySet()
+                .stream()
+                .sorted(Map.Entry.<String,Long>
+                     comparingByValue().reversed())
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList();
+
+Pipeline:
+words
+ → group
+ → count
+ → sort
+ → top 5
+
+32. Find the first non-repeating character in a string.
+Expected solution:
+char result = str.chars()
+                .mapToObj(c -> (char)c)
+                .collect(Collectors.groupingBy(
+                    c -> c,
+                    LinkedHashMap::new,
+                    Collectors.counting()
+                ))
+                .entrySet()
+                .stream()
+                .filter(e -> e.getValue() == 1)
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElseThrow();
+
+33. Find duplicate elements in a list.
+34. Find top N frequent elements.
+35. Flatten deeply nested collections.
+    Example:
+    List<List<List<Integer>>>
+36. Detect inefficient stream usage in code review.
+    Example:
+    list.stream()
+        .filter(...)
+        .collect(Collectors.toList())
+        .stream()
+        .map(...)
+
+    Correct answer:
+    Combine pipelines.
+
+
+
