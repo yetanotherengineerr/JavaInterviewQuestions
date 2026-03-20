@@ -247,5 +247,1119 @@ char result = str.chars()
     Correct answer:
     Combine pipelines.
 
+Streams Code/Debugging Scenarios:
+1. What's the output of:
+Stream<Integer> stream = List.of(1,2,3).stream();
+stream.forEach(System.out::println);
+stream.count();
+
+Result: IllegalStateException: stream has already been operated upon
+
+Why: Streams are single-use pipelines. Once a terminal operation runs, the stream is consumed.
+
+Fix: Create a new stream.
+List<Integer> list = List.of(1,2,3);
+list.stream().forEach(System.out::println);
+list.stream().count();
+
+2. Code
+   list.stream()
+       .filter(x -> {
+           System.out.println("Filtering");
+           return x > 5;
+       });
+
+   Output: Nothing prints.
+   Why: No terminal operation exists. Streams are lazy.
+   Fix: Add terminal operation.
+   list.stream()
+       .filter(x -> x > 5)
+       .toList();
+
+3. Code
+   Stream.iterate(1, n -> n + 1)
+         .filter(n -> n < 0)
+         .findFirst();
+
+   Result: Program never finishes.
+   Why: infinite stream, filter condition never satisfied.
+   Fix: Add limit.
+   Stream.iterate(1, n -> n + 1)
+         .limit(100)
+         .filter(n -> n < 0)
+         .findFirst();
+
+4. Code
+List<Integer> result = new ArrayList<>();
+IntStream.range(1,1000)
+         .parallel()
+         .forEach(result::add);
+
+    Problem: Results may be corrupted or missing.
+    Why: ArrayList is not thread-safe.
+    Fix: Use collector.
+    List<Integer> result = IntStream.range(1,1000)
+                        .parallel()
+                        .boxed()
+                        .toList();
+
+5. Code
+   int sum = 0;
+   numbers.stream().forEach(n -> sum += n);
+
+   Problem: Won't compile (effectively final variable). Even if workaround is used → unsafe in parallel streams.
+   Fix: Use reduce.
+   int sum = numbers.stream().reduce(0, Integer::sum);
+
+6. Code
+   class User {
+      int id;
+   }
+   users.stream().distinct().toList();
+
+   Problem: Duplicates remain.
+   Why: distinct() relies on: equals() hashCode()
+   Fix: Override both methods.
+
+7. Code
+   stream.peek(x -> saveToDatabase(x))
+         .toList();
+
+   Problem: Side effects hidden inside pipeline.
+   Why: peek() is intended only for debugging.
+   Fix: Separate side effects.
+
+8. Code
+   numbers.parallelStream()
+       .filter(n -> n > 10)
+       .findFirst();
+
+   Problem: Parallelism becomes inefficient.
+   Why: findFirst() preserves ordering.
+   Fix: Use findAny()
+
+9. Code
+    list.parallelStream()
+      .forEach(System.out::println);
+
+   Output: Order may change.
+   Example:
+    5
+    1
+    3
+    2
+    4
+   Why: Parallel streams do not guarantee order.
+   Fix: forEachOrdered()
+
+10. Code
+    list.stream().forEach(list::remove);
+
+    Result: ConcurrentModificationException
+
+    Why: You modify collection while iterating.
+    Fix: Use filter. list.removeIf(x -> condition);
 
 
+Debugging Trick
+When debugging streams, add logging with peek.
+Example:
+stream
+ .peek(x -> System.out.println("Input: " + x))
+ .filter(x -> x > 5)
+ .peek(x -> System.out.println("Filtered: " + x))
+ .map(x -> x * 2)
+ .toList();
+
+But remove this after debugging.
+
+11. Code
+    Stream.of(1,2,3)
+          .filter(x -> {
+              System.out.println("filter " + x);
+              return x > 1;
+          });
+
+    Question: What prints?
+    Answer: Nothing
+
+    Why: Streams are lazy. Without a terminal operation, nothing runs.
+
+12. Code
+    Stream.of(1,2,3,4)
+          .filter(x -> {
+              System.out.println("filter " + x);
+              return x % 2 == 0;
+          })
+          .findFirst();
+
+    Output:
+    filter 1
+    filter 2
+
+    Why: findFirst() stops the pipeline once the first match appears.
+
+13. Code
+    Stream.of(1,2,3,4)
+          .map(x -> {
+              System.out.println("map " + x);
+              return x * 2;
+          })
+          .filter(x -> {
+              System.out.println("filter " + x);
+              return x > 4;
+          })
+          .findFirst();
+
+    Output:
+    map 1
+    filter 2
+    map 2
+    filter 4
+    map 3
+    filter 6
+
+    Why: Streams operate element-by-element, not stage-by-stage. Pipeline actually behaves like: map → filter → next element
+
+14. Code
+    Stream.iterate(1, n -> n + 1)
+          .filter(n -> n < 0)
+          .findFirst();
+
+    Result: Program never finishes.
+    Why: Infinite stream + condition never satisfied.
+
+15. Code
+    Stream<Integer> s = Stream.of(1,2,3);
+    s.count();
+    s.forEach(System.out::println);
+
+    Result: IllegalStateException
+    Why: Streams are single-use pipelines.
+
+16. Code
+    List<Integer> list = List.of(1,2,3,4,5);
+    list.parallelStream()
+        .forEach(System.out::print);
+
+    Possible Output: 35142
+    Why: Parallel streams do not preserve order.
+    Use: forEachOrdered()
+
+
+17. Code
+    List<Integer> list = new ArrayList<>(List.of(1,2,3));
+    list.stream().forEach(list::remove);
+
+    Result: ConcurrentModificationException
+    Why: You cannot modify a collection while streaming it.
+
+18. Puzzle: distinct() Surprise
+    Code
+    class User {
+       int id;
+    }
+
+    List<User> users = List.of(
+        new User(1),
+        new User(1)
+    );
+
+    users.stream()
+         .distinct()
+         .count();
+
+    Output: 2
+
+    Why: distinct() relies on: equals() hashCode()
+
+19: Puzzle: limit() Efficiency
+    Code
+    Stream.of(1,2,3,4,5)
+          .filter(x -> {
+              System.out.println("filter " + x);
+              return x > 2;
+          })
+          .limit(1)
+          .toList();
+
+    Output: filter 1
+    filter 2
+    filter 3
+
+    Why: limit() stops pipeline once enough elements pass.
+
+20. Puzzle: peek() Trap
+    Code: Stream.of(1,2,3).peek(System.out::println);
+
+    Output: Nothing
+    Why: Again: no terminal operation. peek() is intermediate.
+
+Almost every Stream puzzle relies on four rules:
+1️⃣ Streams are lazy
+2️⃣ Operations run element-by-element
+3️⃣ Streams are single-use
+4️⃣ Parallel streams break ordering
+If you remember those, most Streams puzzles become easy.
+
+1️⃣ Sorting Before Limiting
+Code
+list.stream()
+    .sorted()
+    .limit(10)
+    .toList();
+
+What you may think: Only the first 10 elements are sorted.
+Reality: The entire list is sorted first.
+Why: sorted() must examine all elements.
+Better approach: Use a priority queue if the dataset is huge.
+
+2️⃣ Parallel Stream Slower Than Sequential
+Code
+list.parallelStream()
+    .map(x -> x * 2)
+    .toList();
+
+Assumption: Parallel = faster.
+Reality: Often slower.
+Why: Parallel overhead includes:
+            thread scheduling
+            splitting
+            merging results
+Rule
+Parallel streams help only when:
+large dataset + CPU-heavy computation
+
+
+3️⃣ Boxing Overhead
+Code
+list.stream()
+    .map(x -> x * 2)
+    .reduce(0, Integer::sum);
+
+Problem: Boxing/unboxing overhead.
+Better: list.stream()
+    .mapToInt(x -> x * 2)
+    .sum();
+
+Primitive streams are faster.
+
+4️⃣ distinct() on Large Data
+Code
+list.stream()
+    .distinct()
+    .toList();
+
+Problem: distinct() internally uses HashSet.
+Impact: Huge memory overhead for millions of elements.
+
+5️⃣ Nested Streams (O(n²))
+Code
+users.stream()
+     .forEach(u ->
+         orders.stream()
+               .filter(o -> o.userId()==u.id())
+     );
+
+Complexity: O(n²)
+
+Better approach: Index orders first:
+Map<Integer,List<Order>> map =
+orders.stream()
+      .collect(Collectors.groupingBy(Order::userId));
+
+
+6️⃣ Expensive filter() Order
+Code
+stream
+.filter(x -> expensiveCheck(x))
+.filter(x -> x > 10)
+
+Problem: Expensive check runs unnecessarily.
+Better: stream
+            .filter(x -> x > 10)
+            .filter(this::expensiveCheck)
+
+Put cheap filters first.
+
+7️⃣ Collecting Huge Streams
+Code
+List<Data> data =
+stream.collect(Collectors.toList());
+
+Problem: Memory explosion if dataset is huge.
+Better: Process elements incrementally.
+Example: stream.forEach(this::writeToFile);
+
+
+8️⃣ Parallel Stream with Blocking IO
+Code
+users.parallelStream()
+     .forEach(user -> httpCall(user));
+
+Problem: Threads block.
+Parallel streams use: ForkJoinPool.commonPool. Blocking tasks can freeze the application.
+Better: Use custom thread pool.
+
+9️⃣ Multiple Stream Pipelines
+Code
+list.stream()
+    .filter(x -> x > 10)
+    .toList()
+    .stream()
+    .map(x -> x * 2)
+
+Problem: Two pipelines → extra iteration.
+Better: list.stream()
+    .filter(x -> x > 10)
+    .map(x -> x * 2)
+
+
+🔟 findFirst() Killing Parallel Performance
+Code
+stream.parallel()
+      .filter(x -> x > 10)
+      .findFirst();
+
+Problem: Ordering must be preserved.
+Result: Parallelism reduced.
+Better: findAny()
+
+Stream API Suggestions:
+Rule 1 - Prefer primitive streams. IntStream / LongStream
+Rule 2 - Avoid parallel streams for IO tasks.
+Rule 3 - Avoid multiple stream pipelines.
+Rule 4 - Place cheap filters first.
+Rule 5 - Avoid collecting huge streams into memory.
+
+1️⃣ Find the First Non-Repeating Word in a Sentence
+Problem: Given a sentence, return the first word that appears only once.
+Example: "java streams are powerful and streams are fast"
+
+Expected result: powerful
+
+Stream Solution
+String result = Arrays.stream(sentence.split(" "))
+      .collect(Collectors.groupingBy(
+          w -> w,
+          LinkedHashMap::new,
+          Collectors.counting()))
+      .entrySet()
+      .stream()
+      .filter(e -> e.getValue() == 1)
+      .map(Map.Entry::getKey)
+      .findFirst()
+      .orElse(null);
+
+Why tricky: requires LinkedHashMap to preserve order.
+
+2️⃣ Find Missing Numbers in a Sequence
+Problem: Given numbers from 1..N, find missing ones.
+Example: input: [1,2,4,6] N=6
+Output: [3,5]
+
+Stream Solution
+List<Integer> missing = IntStream.rangeClosed(1,6)
+         .filter(n -> !list.contains(n))
+         .boxed()
+         .toList();
+
+Why tricky: contains() makes complexity O(n²). Interviewers often expect optimization.
+
+3️⃣ Convert List of Strings into a Frequency Map (Case-Insensitive)
+Example: ["Java","java","Python","JAVA"]
+
+Output: {java=3, python=1}
+
+Solution
+Map<String,Long> map = words.stream()
+     .map(String::toLowerCase)
+     .collect(Collectors.groupingBy(
+         w -> w,
+         Collectors.counting()
+     ));
+
+
+4️⃣ Find the Most Frequent Element
+Example: [1,2,3,2,4,2,5]
+
+Expected: 2
+
+Solution
+int result = numbers.stream()
+       .collect(Collectors.groupingBy(
+           n -> n,
+           Collectors.counting()))
+       .entrySet()
+       .stream()
+       .max(Map.Entry.comparingByValue())
+       .get()
+       .getKey();
+
+
+5️⃣ Group Strings by Anagram
+Example: ["eat","tea","tan","ate","nat","bat"]
+
+Output:
+{
+  aet=[eat,tea,ate],
+  ant=[tan,nat],
+  abt=[bat]
+}
+
+Solution
+Map<String,List<String>> result = words.stream()
+     .collect(Collectors.groupingBy(w -> {
+         char[] arr = w.toCharArray();
+         Arrays.sort(arr);
+         return new String(arr);
+     }));
+
+Why tricky: requires transformation key.
+
+6️⃣ Flatten Deeply Nested Collections
+Example: List<List<List<Integer>>>
+Goal → flat list.
+Solution:
+List<Integer> result = nested.stream()
+      .flatMap(List::stream)
+      .flatMap(List::stream)
+      .toList();
+
+Why tricky: requires understanding nested flattening.
+
+7️⃣ Find Longest Word in Each Sentence
+Input: ["Java streams are powerful", "Streams simplify data processing"]
+
+Output: [powerful, processing]
+
+Solution
+List<String> result = sentences.stream()
+         .map(s -> Arrays.stream(s.split(" "))
+              .max(Comparator.comparingInt(String::length))
+              .orElse(""))
+         .toList();
+
+
+8️⃣ Partition Numbers into Prime and Non-Prime
+Solution:
+Map<Boolean,List<Integer>> result = numbers.stream()
+       .collect(Collectors.partitioningBy(n ->
+           IntStream.range(2,n)
+                    .noneMatch(i -> n % i == 0)
+       ));
+
+Why tricky: embedded stream inside predicate.
+
+9️⃣ Merge Two Lists Without Duplicates
+Example: [1,2,3] + [3,4,5]
+
+Output: [1,2,3,4,5]
+
+Solution
+List<Integer> result = Stream.concat(list1.stream(), list2.stream())
+      .distinct()
+      .toList();
+
+
+🔟 Find Top 3 Highest Salaries per Department
+Input: Employee(dept, salary)
+
+Solution
+Map<String,List<Employee>> result = employees.stream()
+         .collect(Collectors.groupingBy(
+             Employee::getDept,
+             Collectors.collectingAndThen(
+                 Collectors.toList(),
+                 list -> list.stream()
+                     .sorted(Comparator.comparing(Employee::getSalary)
+                     .reversed())
+                     .limit(3)
+                     .toList()
+             )
+         ));
+
+Why tricky: requires collectingAndThen.
+
+1️⃣ Top K Frequent Words
+Problem: Return the top K most frequent words.
+Example ["java","python","java","go","java","python"]
+k = 2
+Output [java, python]
+
+Stream Idea
+List<String> result = words.stream()
+     .collect(Collectors.groupingBy(
+         w -> w,
+         Collectors.counting()))
+     .entrySet()
+     .stream()
+     .sorted(Map.Entry.<String,Long>comparingByValue().reversed())
+     .limit(k)
+     .map(Map.Entry::getKey)
+     .toList();
+
+
+2️⃣ Find Duplicate Words With Counts
+Problem: Return only words that appear more than once.
+Stream Idea
+Map<String,Long> duplicates = words.stream()
+     .collect(Collectors.groupingBy(
+         w -> w,
+         Collectors.counting()))
+     .entrySet()
+     .stream()
+     .filter(e -> e.getValue() > 1)
+     .collect(Collectors.toMap(
+         Map.Entry::getKey,
+         Map.Entry::getValue));
+
+
+3️⃣ Group Employees by Department and Highest Salary
+Problem: Return the highest paid employee per department.
+Map<String, Optional<Employee>> result = employees.stream()
+         .collect(Collectors.groupingBy(
+             Employee::getDepartment,
+             Collectors.maxBy(
+                 Comparator.comparing(Employee::getSalary)
+             )
+         ));
+
+
+4️⃣ Find Second Highest Salary Per Department
+Map<String, Employee> result = employees.stream()
+         .collect(Collectors.groupingBy(
+             Employee::getDepartment,
+             Collectors.collectingAndThen(
+                 Collectors.toList(),
+                 list -> list.stream()
+                     .sorted(Comparator.comparing(Employee::getSalary)
+                     .reversed())
+                     .skip(1)
+                     .findFirst()
+                     .orElse(null)
+             )
+         ));
+
+
+5️⃣ Flatten Orders → Items → Product Names
+Data structure
+List<Order>
+Order → List<Item>
+Item → productName
+
+Stream
+List<String> products = orders.stream()
+      .flatMap(o -> o.getItems().stream())
+      .map(Item::getProductName)
+      .toList();
+
+
+6️⃣ Find the Longest Word Across All Sentences
+String longest = sentences.stream()
+         .flatMap(s -> Arrays.stream(s.split(" ")))
+         .max(Comparator.comparingInt(String::length))
+         .orElse("");
+
+
+7️⃣ Convert List to Map With Conflict Resolution
+Problem: Two users may share the same ID.
+Map<Integer,User> map = users.stream()
+     .collect(Collectors.toMap(
+         User::getId,
+         Function.identity(),
+         (u1,u2) -> u1
+     ));
+
+
+8️⃣ Detect Palindromes in List
+List<String> palindromes = words.stream()
+     .filter(w ->
+         new StringBuilder(w).reverse().toString().equals(w))
+     .toList();
+
+
+9️⃣ Find Most Expensive Product Per Category
+Map<String,Optional<Product>> result = products.stream()
+        .collect(Collectors.groupingBy(
+            Product::getCategory,
+            Collectors.maxBy(
+                Comparator.comparing(Product::getPrice)
+            )
+        ));
+
+
+🔟 Create Histogram of Word Lengths
+"java streams are powerful"
+
+Result {3=1,4=2,7=1}
+
+Map<Integer,Long> histogram = words.stream()
+     .collect(Collectors.groupingBy(
+         String::length,
+         Collectors.counting()
+     ));
+
+11. Merge Multiple Lists and Sort
+List<Integer> result = Stream.of(list1, list2, list3)
+      .flatMap(Collection::stream)
+      .sorted()
+      .toList();
+
+
+12. Find All Unique Characters in List of Strings
+Set<Character> chars = words.stream()
+     .flatMapToInt(String::chars)
+     .mapToObj(c -> (char)c)
+     .collect(Collectors.toSet());
+
+
+13. Find Employees Older Than Average
+double avg = employees.stream()
+         .mapToInt(Employee::getAge)
+         .average()
+         .orElse(0);
+
+List<Employee> result = employees.stream()
+         .filter(e -> e.getAge() > avg)
+         .toList();
+
+
+14. Convert Nested Map Structure
+Input: Map<Dept,List<Employee>>
+Goal: Map<Dept,List<String>> names
+
+Map<String,List<String>> result = map.entrySet().stream()
+   .collect(Collectors.toMap(
+       Map.Entry::getKey,
+       e -> e.getValue().stream()
+             .map(Employee::getName)
+             .toList()
+   ));
+
+
+15. Partition Numbers by Prime / Non-Prime
+Map<Boolean,List<Integer>> result = numbers.stream()
+       .collect(Collectors.partitioningBy(n ->
+           IntStream.range(2,n)
+                    .noneMatch(i -> n % i == 0)
+       ));
+
+
+16. Find First Repeated Character in String
+Character result = str.chars()
+   .mapToObj(c -> (char)c)
+   .collect(Collectors.groupingBy(
+       c -> c,
+       LinkedHashMap::new,
+       Collectors.counting()))
+   .entrySet()
+   .stream()
+   .filter(e -> e.getValue() > 1)
+   .map(Map.Entry::getKey)
+   .findFirst()
+   .orElse(null);
+
+
+17. Combine Two Maps by Summing Values
+Map<String,Integer> merged = Stream.concat(map1.entrySet().stream(),
+              map2.entrySet().stream())
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                Map.Entry::getValue,
+                Integer::sum
+            ));
+
+
+18. Find Missing Numbers Between Min and Max
+List<Integer> missing = IntStream.rangeClosed(
+        Collections.min(list),
+        Collections.max(list))
+        .filter(n -> !list.contains(n))
+        .boxed()
+        .toList();
+
+
+19. Build Nested Department → Salary Buckets
+Example output Engineering → {low, mid, high}
+
+Stream idea
+Map<String, Map<String, List<Employee>>> result = employees.stream()
+         .collect(Collectors.groupingBy(
+             Employee::getDepartment,
+             Collectors.groupingBy(e -> {
+                 if(e.getSalary() < 50000) return "low";
+                 if(e.getSalary() < 100000) return "mid";
+                 return "high";
+             })
+         ));
+
+
+20.  Multi-Stage Analytics Pipeline
+Problem Find the top 5 customers by total purchase amount.
+List<String> result = orders.stream()
+      .collect(Collectors.groupingBy(
+          Order::getCustomerId,
+          Collectors.summingDouble(Order::getAmount)
+      ))
+      .entrySet()
+      .stream()
+      .sorted(Map.Entry.<String,Double>comparingByValue().reversed())
+      .limit(5)
+      .map(Map.Entry::getKey)
+      .toList();
+
+21. Puzzle: Pipeline Execution Order
+Code: Stream.of(1,2,3)
+      .map(x -> {
+          System.out.print("A");
+          return x;
+      })
+      .map(x -> {
+          System.out.print("B");
+          return x;
+      })
+      .count();
+
+Question: What prints?
+Answer: ABABAB
+
+Why: Streams process element by element, not stage by stage.
+Actual execution:
+element1 → mapA → mapB
+element2 → mapA → mapB
+element3 → mapA → mapB
+
+
+22 Puzzle: Unexpected reduce Result
+Code
+int result =
+Stream.of(1,2,3,4).reduce(1, (a,b) -> a + b);
+
+Question: What is the result?
+Answer: 11
+
+Why: ((1 + 1) + 2) + 3 + 4
+Identity value participates in computation.
+
+23. Puzzle: Parallel Reduce Trap
+Code: int result =
+Stream.of(1,2,3,4)
+      .parallel()
+      .reduce(5, Integer::sum);
+
+Question: Is the result guaranteed?
+Answer: No
+Why: The identity value may be applied multiple times in parallel reduction.
+
+24. Puzzle: flatMap vs map
+Code: Stream.of(List.of(1,2), List.of(3,4))
+      .map(List::stream)
+      .count();
+Question: What is the result?
+Answer: 2
+Why: map produces a stream of two streams, not four integers.
+
+25. Puzzle: limit with Infinite Stream
+Code: Stream.generate(() -> 1)
+      .map(x -> x + 1)
+      .limit(5)
+      .count();
+Answer: 5
+Why: limit() short-circuits the infinite stream.
+
+26. Puzzle: unordered() Impact
+Code: IntStream.range(1,10)
+         .unordered()
+         .parallel()
+         .limit(3)
+         .forEach(System.out::print);
+
+Question: What prints?
+Answer: Any 3 numbers between 1 and 9
+Why: Removing ordering allows parallel processing to stop early.
+
+27. Puzzle: Stateful Lambda
+Code: List<Integer> list = new ArrayList<>();
+IntStream.range(1,5)
+         .parallel()
+         .forEach(list::add);
+System.out.println(list.size());
+Question: Is output always 4?
+Answer: No
+Why: ArrayList is not thread-safe.
+
+28. Puzzle: Stream Fusion
+Code: Stream.of(1,2,3)
+      .filter(x -> {
+          System.out.print("F");
+          return true;
+      })
+      .map(x -> {
+          System.out.print("M");
+          return x;
+      })
+      .forEach(x -> {});
+
+Output: FMFMFM
+Why: Each element passes through entire pipeline before next.
+
+29. Puzzle: sorted() with Infinite Stream
+Code: Stream.iterate(1, n -> n + 1)
+      .sorted()
+      .limit(5)
+      .forEach(System.out::println);
+Result: Program never finishes
+Why: sorted() requires entire stream before emitting elements.
+
+30. Puzzle: peek Execution
+Code: Stream.of(1,2,3)
+      .peek(System.out::print)
+      .limit(2)
+      .count();
+Output: 12
+Why: Only two elements are needed due to limit.
+
+31. Puzzle: Parallel Stream Ordering
+Code: Stream.of(1,2,3,4)
+      .parallel()
+      .map(x -> x * 2)
+      .forEachOrdered(System.out::print);
+Output: 2468
+Why: forEachOrdered enforces encounter order.
+
+32 Puzzle: distinct() Performance Trap
+Code: Stream.iterate(1, n -> n + 1)
+      .distinct()
+      .limit(5)
+      .forEach(System.out::println);
+Result: 1 2 3 4 5
+Why: All numbers are already unique. But distinct() still maintains a set internally.
+
+33. Puzzle: Stream of Arrays
+Code: Stream.of(new int[]{1,2,3}).count();
+
+Result: 1
+
+Why: The stream contains one array, not three integers.
+
+34. Puzzle: Reduce with String
+Code: String result =
+Stream.of("a","b","c").reduce("", String::concat);
+Result: abc
+Why: Reduction concatenates sequentially.
+
+35. Puzzle: Parallel limit Cost
+Code: IntStream.range(1,1_000_000)
+         .parallel()
+         .limit(10)
+         .sum();
+Question: Is this efficient?
+Answer: No
+Why: limit() must preserve ordering → parallel benefit reduced.
+
+1. Reverse Words in a Sentence Using Streams
+Input "java streams are powerful"
+Output "powerful are streams java"
+Stream Idea
+String result = Arrays.stream(sentence.split(" "))
+      .collect(Collectors.collectingAndThen(
+          Collectors.toList(),
+          list -> {
+              Collections.reverse(list);
+              return String.join(" ", list);
+          }));
+
+
+2. Find All Numbers Appearing More Than Once
+Set<Integer> result = numbers.stream()
+       .filter(n ->
+           Collections.frequency(numbers, n) > 1)
+       .collect(Collectors.toSet());
+
+Tricky point: frequency() makes the algorithm O(n²).
+
+3. Group Words by First Letter
+Example result
+{
+a=[apple, ant],
+b=[banana, bat]
+}
+
+Map<Character,List<String>> result = words.stream()
+     .collect(Collectors.groupingBy(w -> w.charAt(0)));
+
+
+4. Find the Shortest Word
+String shortest = words.stream()
+     .min(Comparator.comparingInt(String::length))
+     .orElse("");
+
+
+5. Extract Distinct Characters from All Words
+Set<Character> chars = words.stream()
+     .flatMapToInt(String::chars)
+     .mapToObj(c -> (char)c)
+     .collect(Collectors.toSet());
+
+
+6. Find All Words With Exactly Two Vowels
+List<String> result = words.stream()
+     .filter(w ->
+         w.chars()
+          .filter(c -> "aeiou".indexOf(c) >= 0)
+          .count() == 2)
+     .toList();
+
+
+7. Count Total Characters Across All Words
+int total = words.stream()
+     .mapToInt(String::length)
+     .sum();
+
+
+8. Create Map of Word → Length
+Map<String,Integer> map = words.stream()
+     .collect(Collectors.toMap(
+         w -> w,
+         String::length));
+
+
+9. Partition Words by Length > 5
+Map<Boolean,List<String>> result = words.stream()
+     .collect(Collectors.partitioningBy(
+         w -> w.length() > 5));
+
+
+10. Find All Prefixes of Each Word
+Input "java"
+Output [j, ja, jav, java]
+List<String> prefixes = IntStream.rangeClosed(1, word.length())
+         .mapToObj(i -> word.substring(0,i))
+         .toList();
+
+
+11. Remove Null Values and Trim Strings
+List<String> result = strings.stream()
+       .filter(Objects::nonNull)
+       .map(String::trim)
+       .toList();
+
+
+12. Find Maximum Digit in List of Numbers
+int max = numbers.stream()
+       .flatMapToInt(n ->
+           String.valueOf(n).chars())
+       .map(c -> c - '0')
+       .max()
+       .orElse(0);
+
+
+13. Convert List of Sentences into Word Frequency Map
+Map<String,Long> result = sentences.stream()
+         .flatMap(s -> Arrays.stream(s.split(" ")))
+         .collect(Collectors.groupingBy(
+             w -> w,
+             Collectors.counting()));
+
+
+14. Find Longest Increasing Prefix
+Example [1,2,3,2,5]
+Result [1,2,3]
+Stream idea IntStream.range(1,list.size())
+         .takeWhile(i -> list.get(i) > list.get(i-1))
+
+
+15. Merge and Sort Multiple Sets
+Set<Integer> result = Stream.of(set1,set2,set3)
+      .flatMap(Set::stream)
+      .collect(Collectors.toCollection(TreeSet::new));
+
+
+16. Find Word With Maximum Vowels
+String result = words.stream()
+     .max(Comparator.comparingLong(
+         w -> w.chars()
+               .filter(c -> "aeiou".indexOf(c)>=0)
+               .count()))
+     .orElse("");
+
+
+17. Convert List of Strings into Nested Map
+Example output
+{
+a={apple=5, ant=3}
+}
+
+Map<Character,Map<String,Integer>> result = words.stream()
+     .collect(Collectors.groupingBy(
+         w -> w.charAt(0),
+         Collectors.toMap(
+             w -> w,
+             String::length)));
+
+
+18. Find the Product of All Numbers
+int product = numbers.stream()
+       .reduce(1, (a,b) -> a * b);
+
+
+19. Convert Words Into Sorted Character Strings
+Example "stream" → "aemrst"
+List<String> result = words.stream()
+     .map(w -> {
+         char[] arr = w.toCharArray();
+         Arrays.sort(arr);
+         return new String(arr);
+     })
+     .toList();
+
+
+20. Create Sliding Windows of Size 3
+Input [1,2,3,4,5]
+Output [1,2,3], [2,3,4], [3,4,5]
+
+List<List<Integer>> result = IntStream.range(0,list.size()-2)
+         .mapToObj(i ->
+             list.subList(i,i+3))
+         .toList();
+
+
+21. Find All Words Ending With Same Letter
+Map<Character,List<String>> result = words.stream()
+     .collect(Collectors.groupingBy(
+         w -> w.charAt(w.length()-1)));
+
+
+22. Convert List Into Cyclic Pairs
+Example [1,2,3,4]
+Output (1,2),(2,3),(3,4),(4,1)
+
+List<String> pairs = IntStream.range(0,list.size())
+         .mapToObj(i ->
+             list.get(i) + "," +
+             list.get((i+1)%list.size()))
+         .toList();
+
+
+23. Find All Perfect Squares
+List<Integer> result = numbers.stream()
+       .filter(n -> {
+           int r = (int)Math.sqrt(n);
+           return r*r == n;
+       })
+       .toList();
+
+
+24. Create Map of Length → Concatenated Words
+Map<Integer,String> result = words.stream()
+     .collect(Collectors.groupingBy(
+         String::length,
+         Collectors.joining(",")));
+
+
+25. Flatten Map<String,List> Into Single List
+List<Integer> result = map.values()
+   .stream()
+   .flatMap(List::stream)
+   .toList();
