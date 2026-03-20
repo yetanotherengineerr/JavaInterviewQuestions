@@ -1,0 +1,301 @@
+1. Typical Enterprise Project Structure
+springboot-app
+│
+├── src
+│   ├── main
+│   │   ├── java/com/company/project
+│   │   │   │
+│   │   │   ├── config
+│   │   │   ├── controller
+│   │   │   ├── service
+│   │   │   ├── service/impl
+│   │   │   ├── repository
+│   │   │   ├── entity
+│   │   │   ├── dto
+│   │   │   ├── mapper
+│   │   │   ├── exception
+│   │   │   ├── security
+│   │   │   ├── util
+│   │   │   ├── constants
+│   │   │   └── Application.java
+│   │
+│   └── resources
+│       ├── application.yml
+│       ├── application-dev.yml
+│       ├── application-prod.yml
+│       ├── db
+│       │   └── migration
+│       ├── static
+│       └── templates
+│
+└── test
+    └── java/com/company/project
+
+
+2. Package-by-Layer Architecture (Most Common)
+Most enterprise Spring Boot projects use a layered architecture.
+Controller → Service → Repository → Database
+
+
+3. Controller Layer
+Handles HTTP requests.
+controller/
+
+Example:
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService){
+        this.userService = userService;
+    }
+
+    @GetMapping("/{id}")
+    public UserDTO getUser(@PathVariable Long id){
+        return userService.getUserById(id);
+    }
+}
+
+Responsibilities:
+REST endpoints
+request validation
+HTTP response mapping
+
+4. Service Layer
+Contains business logic.
+service/
+service/impl/
+
+Example:
+public interface UserService {
+    UserDTO getUserById(Long id);
+}
+
+Implementation:
+@Service
+public class UserServiceImpl implements UserService {
+
+    private final UserRepository repository;
+
+    public UserServiceImpl(UserRepository repository){
+        this.repository = repository;
+    }
+
+    @Override
+    public UserDTO getUserById(Long id){
+        return repository.findById(id)
+                         .map(UserMapper::toDTO)
+                         .orElseThrow();
+    }
+}
+
+Responsibilities:
+business logic
+transaction boundaries
+orchestration
+
+5. Repository Layer
+Handles database access.
+repository/
+
+Example:
+@Repository
+public interface UserRepository
+        extends JpaRepository<User, Long> {
+}
+
+Uses:
+Spring Data JPA
+SQL queries
+database operations
+
+6. Entity Layer
+Represents database tables.
+entity/
+
+Example:
+@Entity
+public class User {
+
+    @Id
+    private Long id;
+
+    private String name;
+
+    private String email;
+}
+
+Responsibilities:
+ORM mapping
+persistence objects
+
+7. DTO Layer
+DTO = Data Transfer Object
+dto/
+
+Example:
+public class UserDTO {
+
+    private Long id;
+    private String name;
+}
+
+Purpose:
+avoid exposing entities
+shape API responses
+
+8. Mapper Layer
+Maps between Entity ↔ DTO.
+mapper/
+
+Example:
+public class UserMapper {
+
+    public static UserDTO toDTO(User user){
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setName(user.getName());
+        return dto;
+    }
+}
+
+Often replaced by MapStruct.
+
+9. Config Package
+Configuration classes.
+config/
+
+Examples:
+database configuration
+bean configuration
+CORS configuration
+Jackson configuration
+Example:
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public ModelMapper modelMapper(){
+        return new ModelMapper();
+    }
+}
+
+
+10. Exception Handling
+Global exception management.
+exception/
+
+Example:
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<String> handle(RuntimeException ex){
+        return ResponseEntity.badRequest()
+                             .body(ex.getMessage());
+    }
+}
+
+
+11. Security Package
+Used when the project uses:
+JWT
+OAuth
+Spring Security
+security/
+
+Example contents:
+JwtFilter
+SecurityConfig
+JwtUtil
+
+
+12. Utility Classes
+Reusable helpers.
+util/
+
+Examples:
+date utilities
+file utilities
+encryption helpers
+
+13. Constants
+Application constants.
+constants/
+
+Example:
+public class ApiPaths {
+
+    public static final String USERS = "/users";
+}
+
+
+14. Resources Folder
+resources/
+
+Contains runtime configuration.
+application.yml
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/app
+
+
+Environment configs
+application-dev.yml
+application-prod.yml
+application-test.yml
+
+Used with:
+spring.profiles.active=dev
+
+
+15. Database Migration
+db/migration/
+
+Used with tools like:
+Flyway
+Liquibase
+Example:
+V1__create_users_table.sql
+V2__add_index.sql
+
+
+16. Test Structure
+src/test/java/com/company/project
+
+Contains:
+controller tests
+service tests
+integration tests
+
+Example:
+@SpringBootTest
+class UserServiceTest {
+
+    @Autowired
+    UserService service;
+
+    @Test
+    void testUser(){
+        assertNotNull(service.getUserById(1L));
+    }
+}
+
+
+17. Real Microservice Structure (Large Systems)
+Larger companies often structure it like:
+project
+│
+├── api
+├── application
+├── domain
+├── infrastructure
+├── config
+└── bootstrap
+
+This follows Clean Architecture / Hexagonal Architecture.
