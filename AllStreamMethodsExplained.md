@@ -2,8 +2,7 @@ Exhaustive list of methods in stream api, along with brief info as of the latest
 These come from Java Stream API, introduced in Java 8 and expanded later.
 Grouped by type of operation:
 
-1️⃣ Stream Creation Methods
-These create a Stream.
+### 1. Stream Creation Methods - these create a Stream.
 | Method                                    | Description                                   |
 |-------------------------------------------|-----------------------------------------------|
 | Collection.stream()                       | Creates a sequential stream from a collection |
